@@ -1,0 +1,21 @@
+---
+# Общие переменные
+system_packages:
+  - git
+  - curl
+  - wget
+  - vim
+  - htop
+  - net-tools
+  - tree
+  - jq
+  - unzip
+  - gnupg
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - python3-pip
+  - python3-venv
+
+docker_users:
+  - "{{ ansible_user }}"
