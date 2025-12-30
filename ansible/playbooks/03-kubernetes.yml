@@ -1,0 +1,33 @@
+---
+- name: Установка Kubernetes инструментов
+  hosts: devops_servers
+  become: yes
+  tasks:
+    - name: Установка kubectl
+      shell: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+    - name: Установка k9s (терминальный UI для k8s)
+      shell: |
+        curl -sS https://webinstall.dev/k9s | bash
+        ln -sf /root/.local/bin/k9s /usr/local/bin/k9s
+
+    - name: Установка Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+    - name: Установка minikube (для локального k8s)
+      shell: |
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        install minikube-linux-amd64 /usr/local/bin/minikube
+
+    - name: Установка k3d (легковесный k8s)
+      shell: |
+        curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+    - name: Установка Lens Desktop (опционально, через snap)
+      snap:
+        name: lens
+        state: present
+      when: "'{{ desktop_env }}' == 'yes'"
