@@ -99,29 +99,6 @@
       args:
         creates: /usr/local/bin/helm
 
-    - name: Установка Terraform
-      block:
-        - name: Добавление GPG ключа HashiCorp
-          apt_key:
-            url: https://apt.releases.hashicorp.com/gpg
-            state: present
-
-        - name: Добавление репозитория HashiCorp
-          apt_repository:
-            repo: "deb [arch=amd64] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
-            state: present
-            update_cache: yes
-
-        - name: Установка Terraform
-          apt:
-            name: terraform
-            state: present
-
-    - name: Установка Ansible (опционально)
-      apt:
-        name: ansible
-        state: present
-
     - name: Установка других полезных инструментов
       apt:
         name:
