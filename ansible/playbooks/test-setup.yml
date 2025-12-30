@@ -1,29 +1,119 @@
 ---
-- name: Проверка установки DevOps инструментов
+- name: Локальная установка DevOps инструментов
   hosts: devops_servers
+  become: yes  # Используем sudo
+  gather_facts: yes
+  
   tasks:
-    - name: Проверка версий установленного ПО
-      command: "{{ item }} --version"
-      register: versions
+    - name: Обновление apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Установка базовых утилит
+      apt:
+        name:
+          - git
+          - curl
+          - wget
+          - vim
+          - htop
+          - net-tools
+          - tree
+          - jq
+          - unzip
+          - python3-pip
+          - python3-venv
+        state: present
+
+    - name: Установка Docker
+      block:
+        - name: Установка зависимостей
+          apt:
+            name:
+              - ca-certificates
+              - curl
+              - gnupg
+            state: present
+
+        - name: Добавление Docker GPG ключа
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+
+        - name: Добавление Docker репозитория
+          apt_repository:
+            repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+            update_cache: yes
+
+        - name: Установка Docker CE
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+            state: present
+
+        - name: Добавление пользователя в группу docker
+          user:
+            name: "{{ ansible_user_id }}"
+            groups: docker
+            append: yes
+
+        - name: Запуск Docker
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
+
+    - name: Установка Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Установка kubectl
+      shell: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        rm kubectl
+      args:
+        creates: /usr/local/bin/kubectl
+
+    - name: Установка Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Установка Terraform
+      apt:
+        name: terraform
+        state: present
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Создание рабочих директорий
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ ansible_user_id }}"
       loop:
-        - docker
-        - docker-compose
-        - kubectl
-        - helm
-        - terraform
-        - ansible
-      ignore_errors: yes
+        - /home/{{ ansible_user_id }}/projects
+        - /home/{{ ansible_user_id }}/k8s
+        - /home/{{ ansible_user_id }}/docker
+        - /home/{{ ansible_user_id }}/terraform
+        - /home/{{ ansible_user_id }}/ansible
 
-    - name: Вывод результатов проверки
+    - name: Отображение установленных версий
       debug:
-        msg: "{{ item.stdout }}"
-      loop: "{{ versions.results }}"
-      when: item.stdout is defined
-
-    - name: Проверка работы Docker
-      command: docker ps
-      register: docker_ps
-
-    - name: Результат проверки Docker
-      debug:
-        msg: "Docker работает: {{ docker_ps.rc == 0 }}"
+        msg: |
+          Docker: {{ docker_version.stdout }}
+          Docker Compose: {{ docker_compose_version.stdout }}
+          Kubectl: {{ kubectl_version.stdout }}
+      vars:
+        docker_version: "{{ lookup('pipe', 'docker --version 2>/dev/null || echo \"Not installed\"') }}"
+        docker_compose_version: "{{ lookup('pipe', 'docker-compose --version 2>/dev/null || echo \"Not installed\"') }}"
+        kubectl_version: "{{ lookup('pipe', 'kubectl version --client --short 2>/dev/null || echo \"Not installed\"') }}"
