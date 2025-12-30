@@ -1,0 +1,29 @@
+---
+- name: Проверка установки DevOps инструментов
+  hosts: devops_servers
+  tasks:
+    - name: Проверка версий установленного ПО
+      command: "{{ item }} --version"
+      register: versions
+      loop:
+        - docker
+        - docker-compose
+        - kubectl
+        - helm
+        - terraform
+        - ansible
+      ignore_errors: yes
+
+    - name: Вывод результатов проверки
+      debug:
+        msg: "{{ item.stdout }}"
+      loop: "{{ versions.results }}"
+      when: item.stdout is defined
+
+    - name: Проверка работы Docker
+      command: docker ps
+      register: docker_ps
+
+    - name: Результат проверки Docker
+      debug:
+        msg: "Docker работает: {{ docker_ps.rc == 0 }}"
