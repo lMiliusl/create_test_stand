@@ -1,0 +1,25 @@
+---
+- name: Тест локального подключения
+  hosts: devops_servers
+  gather_facts: yes
+  
+  tasks:
+    - name: Проверка подключения
+      ping:
+    
+    - name: Показать информацию о системе
+      debug:
+        msg:
+          - "Пользователь: {{ ansible_user_id }}"
+          - "ОС: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Имя хоста: {{ ansible_hostname }}"
+          - "Python: {{ ansible_python_version }}"
+    
+    - name: Проверка, можем ли использовать sudo
+      command: whoami
+      register: whoami_result
+      become: yes
+    
+    - name: Результат sudo
+      debug:
+        msg: "Sudo user: {{ whoami_result.stdout }}"
